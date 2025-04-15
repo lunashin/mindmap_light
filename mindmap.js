@@ -64,39 +64,44 @@ window.onbeforeunload = function(e) {
 //---------------------------------------
 // Key Event
 //---------------------------------------
-// コピー
+// JSONコピー
 document.getElementById('copy_json_btn').addEventListener('click', click_handler_copy_json);
 
 function click_handler_copy_json(event) {
   copy_json();
 }
 
-// インポート
+// JSONインポート
 document.getElementById('import_json_btn').addEventListener('click', click_handler_import_json);
 
 function click_handler_import_json(event) {
   let json_str = document.getElementById('import_json_text').value;
   import_json(json_str);
-  show_item_all();
+  show_item_all(true);
 }
 
-// Save/Load
+// Save
 document.getElementById('save_json_btn').addEventListener('click', click_handler_save);
-document.getElementById('load_json_btn').addEventListener('click', click_handler_load);
 
 function click_handler_save(event) {
-  let yesno = confirm('現在の状態を保存しますか？');
+  let yesno = confirm('現在の状態を洗濯中のスロットへ保存しますか？');
   if (yesno) {
-    save_json();
+    let slot_id = get_selected_save_slot();
+    save_json(slot_id);
     alert('現在の状態を保存しました。');
   }
 }
 
+// Load
+document.getElementById('load_json_btn').addEventListener('click', click_handler_load);
+
 function click_handler_load(event) {
-  let yesno = confirm('現在の状態を破棄して読み込みますか？');
+  let yesno = confirm('現在の状態を破棄して洗濯中のスロットから読み込みますか？');
   if (yesno) {
-    load_json();
-    show_item_all();
+    clear_canvas(true);
+    let slot_id = get_selected_save_slot();
+    load_json(slot_id);
+    show_item_all(true);
   }
 }
 
@@ -104,6 +109,22 @@ function click_handler_load(event) {
 // 要素のキーハンドラ
 function keyhandler_item(event) {
   switch (event.keyCode){
+    case key_arrow_up:    // ↑
+      if (event.altKey) {
+        event.preventDefault();
+        change_order_children(event.target.dataset.id, true);
+        show_item_all();
+        break;
+      }
+      break;
+    case key_arrow_down:  // ↓
+      if (event.altKey) {
+        event.preventDefault();
+        change_order_children(event.target.dataset.id, false);
+        show_item_all();
+        break;
+      }
+      break;
     case key_a:    // a
       event.preventDefault();
       // 要素追加
@@ -112,6 +133,13 @@ function keyhandler_item(event) {
     case key_enter:    // Enter
       event.preventDefault();
       show_edit_box(event.target, 'add');
+      break;
+    case key_c:       // c
+      if (event.altKey) {
+        event.preventDefault();
+        // Copy JSON Bottom this
+        copy_json(event.target.dataset.id);
+      }
       break;
     case key_d:       // d
       event.preventDefault();
@@ -210,7 +238,7 @@ function make_item(id, parent_id, text) {
 }
 
 /**
- * @summary 色設定
+ * @summary テキスト設定
  * @param ID
  * @param テキスト
  */
@@ -276,6 +304,24 @@ function remove_children(item) {
   item.children = [];
 }
 
+/**
+ * 子要素の中の順番変更
+ */
+function change_order_children(id, is_up) {
+  let parent_id = get_item(id).parent;
+  let children = get_item(parent_id).children;
+  for (let i = 0; i < children.length; i++) {
+    if (children[i] == id) {
+      if (is_up && i !== 0) {
+        [children[i], children[i-1]] = [children[i-1], children[i]]
+      }
+      if (!is_up && i !== children.length - 1) {
+        [children[i], children[i+1]] = [children[i+1], children[i]]
+      }
+      break;
+    }
+  }
+}
 
 /**
  * @summary 新しいアイテムIDを発行する
@@ -319,27 +365,42 @@ function import_json(json_str) {
  * @param JSON文字列
  */
 function get_json_string() {
-  return JSON.stringify(g_list_data, null , "  ");
+  let json_str = JSON.stringify(g_list_data, null , "  ");
+    // 一度dictを復元し、lineを削除
+    let temp_dict = JSON.parse(json_str);
+    let keys = Object.keys(temp_dict);
+    for (let i = 0; i < keys.length; i++) {
+      delete temp_dict[keys[i]].line;
+    }
+  return JSON.stringify(temp_dict, null , "  ");
 }
 
 /**
  * @summary 内部データ保存
  */
-function save_json() {
+function save_json(slot) {
+  // JSON文字列取得
   let json_str = get_json_string();
-  saveStorage(key_internal_data, json_str);
+  // 保存
+  saveStorage(get_storage_key(slot), json_str);
 }
 
 /**
  * @summary 内部データ読み込み
  */
-function load_json() {
+function load_json(slot) {
   pushHistory(get_json_string());
 
-  let data = loadStorage(key_internal_data);
+  let data = loadStorage(get_storage_key(slot));
   import_json(data);
 }
 
+/**
+ * @summary storageへアクセスするキー取得
+ */
+function get_storage_key(slot) {
+  return key_internal_data + '_' + slot;
+}
 
 
 
@@ -350,9 +411,12 @@ function load_json() {
 
 /**
  * @summary 全てを描画
+ * @param キャンバスをクリアするかどうか
  */
-function show_item_all() {
-  // clear_canvas();
+function show_item_all(is_clear_canvas) {
+  if(is_clear_canvas) {
+    clear_canvas();
+  }
   show_item(0, -1, g_top_base, g_left_base);
 }
 
@@ -403,18 +467,30 @@ function remove_item_div(id) {
   item.line.remove();
 }
 
+/**
+ * 全てのLineを削除
+ */
+function remove_all_line() {
+  let keys = Object.keys(g_list_data);
+  for (let i = 0; i <  keys.length; i++) {
+    let item = g_list_data[keys[i]];
+    if (item.line !== undefined) {
+      item.line.remove();
+      delete item.line;
+    }
+  }
+}
+
 
 /**
  * @summary 表示を全クリア
  */
 function clear_canvas() {
-  // document.getElementById('canvas').innerHTML = '';
+  // div要素を削除
+  document.getElementById('canvas').innerHTML = '';
 
-  // Linerクリア
-  for (let i = 0; i < g_lines.length; i++) {
-    g_lines[i].remove();
-  }
-  g_lines = [];
+  // 全てのLineを削除
+  remove_all_line();
 }
 
 /**
@@ -548,13 +624,38 @@ function get_element_id(id) {
 }
 
 /**
- * JSONをコピー
+ * @summary JSONをコピー(ID指定の場合は、指定IDをルートとする)
+ * @param ID
  */
-function copy_json(){
+function copy_json(id){
   let str = get_json_string();
   copy_text(str);
 }
 
+/**
+ * @summary 保存スロット選択リスト設定
+ */
+function set_save_slot_select() {
+  let elem_select = document.getElementById('select_save_slot');
+  for (let i = 0; i < g_save_slot.length; i++) {
+    let elem_option = document.createElement("option");
+    elem_option.text = g_save_slot[i].name;
+    elem_option.dataset.id = g_save_slot[i].id;
+    elem_select.appendChild(elem_option);
+  }
+}
+
+/**
+ * @summary 選択している保存スロットID取得
+ * @returns スロットID
+ */
+function get_selected_save_slot() {
+  let elems = get_selected_option('select_save_slot');
+  if (elems.length <= 0) {
+    return;
+  }
+  return elems[0].dataset.id;
+}
 
 
 
@@ -562,7 +663,11 @@ function copy_json(){
 // Main
 //---------------------------------------
 
+// 最後のIDを計算
 update_last_id();
+
+// 保存スロット選択初期化
+set_save_slot_select();
 
 // 要素描画
 show_item_all();

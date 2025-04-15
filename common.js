@@ -208,6 +208,31 @@ function floorEx(value, base) {
 
 
 
+
+//---------------------------------------
+// Function (Element)
+//---------------------------------------
+
+/**
+ * @summary 選択されているoptionを取得
+ * @param selectエレメントID
+ * @returns エレメントのリスト(配列)
+ */
+function get_selected_option(elem_id) {
+  let ret = [];
+  let options = document.getElementById(elem_id).options;
+  for (let i = 0; i < options.length; i++) {
+    if(options[i].selected) {
+      ret.push(options[i]);
+    }
+  }
+  return ret;
+}
+
+
+
+
+
 //---------------------------------------
 // Function (Date)
 //---------------------------------------
