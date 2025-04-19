@@ -46,7 +46,7 @@
           transition-property: top, left;
           transition-duration: 0.1s, 0.1s;
         }
-        .item:focus { background-color: pink; }
+        .item:focus { background-color: pink; border-color: pink; }
 
     </style>
 
@@ -60,17 +60,29 @@
 
 <body>
 
-  <!-- copy -->
-  <button id="copy_json_btn" class="button-mid">Copy JSON</button>
-  
-  <!-- Import -->
-  <button id="import_json_btn" class="button-mid">インポート</button>
-  <textarea id="import_json_text" cols="20" rows="2"></textarea>
+  <div class="flex-box">
+    <!-- copy -->
+    <button id="copy_json_btn" class="button-mid">Copy JSON</button>
+    
+    <!-- Import -->
+    <button id="import_json_btn" class="button-mid">インポート</button>
+    <textarea id="import_json_text" cols="20" rows="2"></textarea>
+    &nbsp;&nbsp;&nbsp;
 
-  <!-- Save/Load -->
-  <select id="select_save_slot"></select>
-  <button id="save_json_btn" class="button-mid">Save</button>
-  <button id="load_json_btn" class="button-mid">Load</button>
+    <!-- Save/Load -->
+    <select id="select_save_slot"></select>
+    <button id="save_json_btn" class="button-mid">Save</button>
+    <button id="load_json_btn" class="button-mid">Load</button>
+    &nbsp;&nbsp;&nbsp;
+
+    <!-- Download JSON -->
+    <button id="download_json_btn" class="button-mid">Download</button>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+    <!-- Clear Canvas-->
+    <button id="clear_canvas" class="button-mid">Clear</button>
+
+  </div>
 
 
   <!-- Canvas -->

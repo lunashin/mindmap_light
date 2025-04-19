@@ -81,6 +81,14 @@ function popHistory() {
   return null;
 }
 
+/**
+ * @summary 履歴保存数取得
+ * @returns 履歴保存数
+ */
+function getHistoryNum() {
+  return g_list_history.length;
+}
+
 // コピーアニメーション
 function copy_animation(elem) {
   // アニメーション
@@ -192,6 +200,25 @@ function load_script(filename, fn) {
     }
   };
 }
+
+/**
+ * @summary 現在の状態をJSONファイルとしてダウンロード
+ * @param ファイル名
+ * @param ダウンロードさせるJSON文字列
+ */
+function download_json(filename, json_str) {
+  // ダウンロード
+  const blob = new Blob([json_str], { type: 'application/json' });
+  const url = (window.URL || window.webkitURL).createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+
 
 /**
  * @summary 小数点以下切り捨て
