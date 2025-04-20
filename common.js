@@ -10,6 +10,7 @@ const key_c = 67;
 const key_d = 68;
 const key_e = 69;
 const key_f = 70;
+const key_i = 73;
 const key_n = 78;
 const key_s = 83;
 const key_z = 90;
@@ -30,6 +31,16 @@ const key_6 = 54;
 const key_7 = 55;
 const key_8 = 56;
 const key_9 = 57;
+
+
+
+//---------------------------------------
+// Data (Common)
+//---------------------------------------
+var g_list_history = [];
+const g_list_history_num = 20;
+
+
 
 
 

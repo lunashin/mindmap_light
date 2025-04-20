@@ -21,39 +21,10 @@ const key_internal_data = prefix + 'data';
 // Download filename
 const g_download_filename_prefix = 'mindmap_json';
 
-
-/* 内部リストデータ
-  [
-    { id: n, text: "xxx", color: "", parent: n, children: [n,n,n], deep: n, } ...
-  ]
- */
-// var g_list_data = [];
-
-// 初期データ
-const g_list_data_init = {
-  "0": {id: 0, text: "root", parent: -1, children: [], color: ''}, 
-};
-
-// 内部データ
-var g_list_data = {
-  "0": {id: 0, text: "root", parent: -1, children: [], color: ''}, 
-};;
-
-// LeaderLine
-var g_lines = [];
-
-// 内部リスト 次回追加時のID
-var g_last_group_id = 10000;
-var g_last_id = 0;
+// Data Manager
+var g_data = new DataManager();
 
 
-// 編集履歴
-var g_list_history = [];
-const g_list_history_num = 20;
-
-// 編集ポップアップ表示状態
-var g_show_popup = false;
-var g_show_popup_list = '';
 
 
 
@@ -91,7 +62,7 @@ document.getElementById('import_json_btn').addEventListener('click', click_handl
 
 function click_handler_import_json(event) {
   let json_str = document.getElementById('import_json_text').value;
-  import_json(json_str);
+  g_data.import_json(json_str);
   show_item_all(true);
 }
 
@@ -100,7 +71,7 @@ document.getElementById('save_json_btn').addEventListener('click', click_handler
 
 function click_handler_save(event) {
   // キーの数を確認
-  let key_num = get_item_num();
+  let key_num = g_data.get_item_num();
   if (key_num <= 1) {
     // キーが１つだけの場合はrootのみのため、何もしない
     alert('rootのみの為、保存をキャンセルしました。');
@@ -110,7 +81,7 @@ function click_handler_save(event) {
   let yesno = confirm('現在の状態を洗濯中のスロットへ保存しますか？');
   if (yesno) {
     let slot_id = get_selected_save_slot();
-    save_json(slot_id);
+    g_data.save_json(slot_id);
     alert('現在の状態を保存しました。');
   }
 }
@@ -123,7 +94,7 @@ function click_handler_load(event) {
   if (yesno) {
     clear_canvas(true);
     let slot_id = get_selected_save_slot();
-    load_json(slot_id);
+    g_data.load_json(slot_id);
     show_item_all(true);
   }
 }
@@ -132,7 +103,7 @@ function click_handler_load(event) {
 document.getElementById('download_json_btn').addEventListener('click', click_handler_download);
 
 function click_handler_download(event) {
-  let json_str = get_json_string();
+  let json_str = g_data.get_json_string();
   let date_str = get_today_str(false, true, true);
   let slot_id = get_selected_save_slot();
   let filename = `${g_download_filename_prefix}_${slot_id}_${date_str}.json`;
@@ -144,7 +115,7 @@ document.getElementById('clear_canvas').addEventListener('click', click_handler_
 
 function click_handler_clear_canvas(event) {
   clear_canvas();
-  import_json(JSON.stringify(g_list_data_init));
+  g_data.import_json(JSON.stringify(g_data.g_list_data_init));
   show_item_all(true);
 }
 
@@ -158,7 +129,7 @@ function keyhandler_window(event) {
       event.preventDefault();
       if (getHistoryNum() > 0) {
         clear_canvas();
-        undo();
+        g_data.undo();
         show_item_all(true);
       }
     }
@@ -177,18 +148,30 @@ function keyhandler_item(event) {
       if (event.altKey) {
         event.preventDefault();
         // 子要素の順番変更
-        change_order_children(id, true);
+        g_data.change_order_children(id, true);
         show_item_all();
         break;
+      }
+      // 前の子要素へフォーカス移動
+      event.preventDefault();
+      let prev_id = g_data.get_neighbor_id(id, true);
+      if (prev_id!== null) {
+        set_focus(prev_id);
       }
       break;
     case key_arrow_down:  // ↓
       if (event.altKey) {
         event.preventDefault();
         // 子要素の順番変更
-        change_order_children(id, false);
+        g_data.change_order_children(id, false);
         show_item_all();
         break;
+      }
+      // 後ろの子要素へフォーカス移動
+      event.preventDefault();
+      let next_id = g_data.get_neighbor_id(id, false);
+      if (next_id !== null) {
+        set_focus(next_id);
       }
       break;
     case key_arrow_left:  // ←
@@ -197,7 +180,7 @@ function keyhandler_item(event) {
       break;
     case key_arrow_right:  // →
       // 子要素へフォーカス移動
-      let item = get_item(parseInt(id));
+      let item = g_data.get_item(parseInt(id));
       if (item.children.length <= 0) {
         break;
       }
@@ -221,27 +204,33 @@ function keyhandler_item(event) {
       break;
     case key_d:       // d
       event.preventDefault();
-      remove_item(id);
+      // g_data.remove_item_ex(id);
+      g_data.remove_item(id)
       show_item_all();
       break;
     case key_e:       // e
       event.preventDefault();
       show_edit_box(event.target, 'edit');
       break;
+    case key_i:       // i
+      // 要素挿入
+      event.preventDefault();
+      show_edit_box(event.target, 'insert');
+      break;
     case key_0:       // 0
-      set_color(id, null);
+      g_data.set_color(id, null);
       show_item_all();
       break;
     case key_1:       // 1
-      set_color(id, '#FFFF99');
+      g_data.set_color(id, '#FFFF99');
       show_item_all();
       break;
     case key_2:       // 2
-      set_color(id, '#33CCFF');
+      g_data.set_color(id, '#33CCFF');
       show_item_all();
       break;
     case key_3:       // 3
-      set_color(id, '#FF6699');
+      g_data.set_color(id, '#FF6699');
       show_item_all();
       break;
   }
@@ -258,7 +247,7 @@ function dblclick_handler_item(event) {
  * @summary 要素トランジション開始時処理
  */
 function transitionStart_handler(event) {
-  let item = g_list_data[this.dataset.id];
+  let item = g_data.get_item(this.dataset.id);
   if (item.line !== undefined) {
     // lineを削除
     item.line.remove();
@@ -270,249 +259,14 @@ function transitionStart_handler(event) {
  * @summary 要素トランジション終了時処理
  */
 function transitionEnd_handler(event) {
-  let item = g_list_data[this.dataset.id];
-  item.line = create_line(document.getElementById(get_element_id(this.dataset.parent_id)), this);
+  let item = g_data.get_item(this.dataset.id);
+  item.line = create_line(document.getElementById(get_element_id(item.parent)), this);
 }
 
 
 
 
 
-
-
-
-//---------------------------------------
-// Function(Data)
-//---------------------------------------
-
-/**
- * @summary 指定IDの要素を取得
- * @param ID
- */
-function get_item(id) {
-  return g_list_data[id];
-}
-
-/**
- * @summary 要素の数を取得
- * @returns 要素の数
- */
-function get_item_num() {
-  return Object.keys(g_list_data).length;
-}
-
-/**
- * @summary 新しい要素を追加
- * @param 親要素ID
- * @param テキスト
- */
-function add_new_item(parent_id, text) {
-  pushHistory(get_json_string());
-
-  let id = genItemID();
-  let item = make_item(id, parent_id, text);
-  g_list_data[id] = item;
-  g_list_data[parent_id].children.push(id);
-}
-
-/**
- * @summary 要素を作成
- * @param ID
- * @param 親要素ID
- * @param テキスト
- */
-function make_item(id, parent_id, text) {
-  return { id: id, text: text, color: "", parent: parent_id, children: [] };
-}
-
-/**
- * @summary テキスト設定
- * @param ID
- * @param テキスト
- */
-function set_text(id, text) {
-  pushHistory(get_json_string());
-
-  let item = get_item(id);
-  item.text = text;
-}
-
-/**
- * @summary 色設定
- * @param ID
- * @param 色(ex '#FFFFFF') (nullは色なし)
- */
-function set_color(id, color) {
-  pushHistory(get_json_string());
-
-  let item = get_item(id);
-  if (color === null) {
-    item.color = '';
-  } else {
-    item.color = color;
-  }
-}
-
-/**
- * @summary 要素削除
- * @param ID
- * @param (通常は指定しない)
- */
-function remove_item(id, is_nest) {
-  if (is_nest === undefined) {
-    pushHistory(get_json_string());
-  }
-
-  let item = get_item(id);
-  let parent_id = item.parent;
-
-  // 子要素を削除
-  for (let i = 0; i < item.children.length; i++) {
-    remove_item(item.children[i], true);
-  }
-
-  // 要素divを削除
-  remove_item_div(id);
-
-  // 自身を削除
-  delete g_list_data[id];
-
-  // 親要素の子要素から指定IDを削除 (再起終了後)
-  if (is_nest === undefined) {
-    let item_parent = get_item(parent_id);
-    for (let i = 0; i < item_parent.children.length; i++) {
-      if (item_parent.children[i] == id) {
-        item_parent.children.splice(i,1);
-      }
-    }
-  }
-}
-
-/**
- * 子要素の中の順番変更
- */
-function change_order_children(id, is_up) {
-  pushHistory(get_json_string());
-
-  let parent_id = get_item(id).parent;
-  let children = get_item(parent_id).children;
-  for (let i = 0; i < children.length; i++) {
-    if (children[i] == id) {
-      if (is_up && i !== 0) {
-        [children[i], children[i-1]] = [children[i-1], children[i]]
-      }
-      if (!is_up && i !== children.length - 1) {
-        [children[i], children[i+1]] = [children[i+1], children[i]]
-      }
-      break;
-    }
-  }
-}
-
-/**
- * @summary 新しいアイテムIDを発行する
- * @returns ID
- */
-function genItemID() {
-  let new_id = g_last_id;
-  g_last_id++;
-  return new_id;
-}
-
-/**
- * @summary 最後のIDを計算
- */
-function update_last_id() {
-  let last_id = 0;
-  let keys = Object.keys(g_list_data);
-  for (let i = 0; i < keys.length; i++) {
-    let id = parseInt(keys[i]);
-    if (last_id < id) {
-      last_id = id;
-    }
-  }
-  g_last_id = last_id + 1;
-}
-
-/**
- * @summary JSONをインポート
- * @param JSON文字列
- */
-function import_json(json_str) {
-  pushHistory(get_json_string());
-
-  let json_obj = JSON.parse(json_str);
-  if (json_obj !== null) {
-    g_list_data = json_obj;
-    update_last_id(); // 最後のIDを計算
-  }
-}
-
-/**
- * @summary JSONをインポート
- * @param JSONオブジェクト
- */
-function import_json_ex(json_obj) {
-  pushHistory(get_json_string());
-
-  if (json_obj !== null) {
-    g_list_data = json_obj;
-    update_last_id(); // 最後のIDを計算
-  }
-}
-
-/**
- * @summary Undo
- */
-function undo() {
-  let json_obj = popHistory();
-  if (json_obj === null) {
-    return;
-  }
-  g_list_data = json_obj;
-}
-
-/**
- * @summary 内部データのJSON文字列を取得
- * @param JSON文字列
- */
-function get_json_string() {
-  let json_str = JSON.stringify(g_list_data, null , "  ");
-    // 一度dictを復元し、lineを削除
-    let temp_dict = JSON.parse(json_str);
-    let keys = Object.keys(temp_dict);
-    for (let i = 0; i < keys.length; i++) {
-      delete temp_dict[keys[i]].line;
-    }
-  return JSON.stringify(temp_dict, null , "  ");
-}
-
-/**
- * @summary 内部データ保存
- */
-function save_json(slot) {
-  // JSON文字列取得
-  let json_str = get_json_string();
-  // 保存
-  saveStorage(get_storage_key(slot), json_str);
-}
-
-/**
- * @summary 内部データ読み込み
- */
-function load_json(slot) {
-  pushHistory(get_json_string());
-
-  let data = loadStorage(get_storage_key(slot));
-  import_json(data);
-}
-
-/**
- * @summary storageへアクセスするキー取得
- */
-function get_storage_key(slot) {
-  return key_internal_data + '_' + slot;
-}
 
 
 
@@ -540,11 +294,11 @@ function show_item_all(is_clear_canvas) {
  * @returns 最後に描画した要素のTOP
  */
 function show_item(id, parent_id, base_top, base_left) {
-  let item = get_item(id);
+  let item = g_data.get_item(id);
 
   let elem = document.getElementById(get_element_id(id));
   if (elem !== null) {
-    // すでに要素が存在する場合は、座標指定のみ
+    // すでに要素が存在する場合は、既存要素へ変更を加える
     elem.innerHTML = item.text;
     elem.style.backgroundColor = item.color;
     elem.style.top = base_top;
@@ -554,11 +308,11 @@ function show_item(id, parent_id, base_top, base_left) {
     elem = create_box(item.id, item.parent, item.text, base_top, base_left, item.color);
     let elem_parent = document.getElementById(get_element_id(parent_id));
     if (elem_parent !== null) {
-      item.line = create_line(elem_parent, elem);
+      item.line = create_line(elem_parent, elem); // 線を引く
     }
   }
 
-  // 子要素を描画
+  // 子要素を描画 (再帰)
   let top_sub = base_top;
   let top_last = base_top;
   for (let i = 0; i < item.children.length; i++) {
@@ -574,23 +328,9 @@ function show_item(id, parent_id, base_top, base_left) {
  * @param ID
  */
 function remove_item_div(id) {
-  let item = get_item(id);
+  let item = g_data.get_item(id);
   document.getElementById(get_element_id(id)).remove();
   item.line.remove();
-}
-
-/**
- * 全てのLineを削除
- */
-function remove_all_line() {
-  let keys = Object.keys(g_list_data);
-  for (let i = 0; i <  keys.length; i++) {
-    let item = g_list_data[keys[i]];
-    if (item.line !== undefined) {
-      item.line.remove();
-      delete item.line;
-    }
-  }
 }
 
 /**
@@ -601,7 +341,7 @@ function clear_canvas() {
   document.getElementById('canvas').innerHTML = '';
 
   // 全てのLineを削除
-  remove_all_line();
+  g_data.remove_all_line();
 }
 
 /**
@@ -649,7 +389,7 @@ function create_line(elem1, elem2) {
 /**
  * @summary テキストボックス作成
  * @param 親要素
- * @param モード('add', 'edit')
+ * @param モード('add', 'edit', 'insert')
  */
 function show_edit_box(elem_parent, mode) {
   let elem = document.createElement('input');
@@ -669,7 +409,7 @@ function show_edit_box(elem_parent, mode) {
   elem.style.position = 'absolute';
 
   // イベントハンドラ(フォーカスロスト)
-  elem.addEventListener("blur", handler_edit_submit);
+  // elem.addEventListener("blur", handler_edit_submit);
 
   // イベントハンドラ(キー)
   elem.addEventListener("keydown", function(event){ 
@@ -706,10 +446,13 @@ function handler_edit_submit(event) {
   // 要素追加
   if (text !== '') {
     if (mode === 'add') {
-      add_new_item(event.target.dataset.parent_id, text);
+      g_data.add_new_item(event.target.dataset.parent_id, text);
     }
     if (mode === 'edit') {
-      set_text(event.target.dataset.parent_id, text);
+      g_data.set_text(event.target.dataset.parent_id, text);
+    }
+    if (mode === 'insert') {
+      g_data.insert_item(event.target.dataset.parent_id, text);
     }
     show_item_all();
   }
@@ -746,7 +489,7 @@ function get_element_id(id) {
  * @param ID
  */
 function copy_json(id){
-  let str = get_json_string();
+  let str = g_data.get_json_string();
   copy_text(str);
 }
 
@@ -780,9 +523,6 @@ function get_selected_save_slot() {
 //---------------------------------------
 // Main
 //---------------------------------------
-
-// 最後のIDを計算
-update_last_id();
 
 // 保存スロット選択初期化
 set_save_slot_select();
