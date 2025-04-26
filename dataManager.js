@@ -50,6 +50,7 @@ class DataManager {
    * @param 要素
    */
   add_item(item) {
+    this.record_history();
     this.g_list_data[item.id] = item;
   }
 
@@ -59,7 +60,7 @@ class DataManager {
    * @param テキスト
    */
   add_new_item(parent_id, text) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     let id = this.genItemID();
     let item = this.make_item(id, parent_id, text, null);
@@ -73,7 +74,7 @@ class DataManager {
    * @param テキスト
    */
   insert_item(parent_id, text) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     // 要素を追加
     let id = this.genItemID();
@@ -111,7 +112,7 @@ class DataManager {
    * @param テキスト
    */
   set_text(id, text) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     let item = this.get_item(id);
     item.text = text;
@@ -123,8 +124,7 @@ class DataManager {
    * @param 色(ex '#FFFFFF') (nullは色なし)
    */
   set_color(id, color) {
-    pushHistory(this.get_json_string());
-
+    this.record_history();
     let item = this.get_item(id);
     if (color === null) {
       item.color = '';
@@ -139,7 +139,7 @@ class DataManager {
    * @param 親ID
    */
   set_parent(id, parent_id) {
-    pushHistory(this.get_json_string());
+    this.record_history();
     this.get_item(id).parent = parent_id;
   }
 
@@ -149,7 +149,7 @@ class DataManager {
    * @param 子ID
    */
   set_children(id, children) {
-    pushHistory(this.get_json_string());
+    this.record_history();
     let children_new = [];
     if (children !== null) {
       children_new = children.concat();
@@ -163,8 +163,7 @@ class DataManager {
    * @param 子ID(配列)
    */
   add_children(id, children_target) {
-    pushHistory(this.get_json_string());
-
+    this.record_history();
     let children = this.get_item(id).children;
     for (let i = 0; i < children_target.length; i++) {
       children.push(children_target[i]);
@@ -177,8 +176,7 @@ class DataManager {
    * @param 子ID
    */
   remove_children_id(id, child_id) {
-    pushHistory(this.get_json_string());
-
+    this.record_history();
     let children = this.get_item(id).children;
     for (let i = 0; i < children.length; i++) {
       if (children[i] == child_id) {
@@ -207,8 +205,7 @@ class DataManager {
    * @param ID
    */
   remove_item(id) {
-    pushHistory(this.get_json_string());
-
+    this.record_history();
     // 子要素の親を削除要素の親に変更
     let item = this.get_item(id);
     for (let i = 0; i < item.children.length; i++) {
@@ -235,7 +232,7 @@ class DataManager {
    */
   remove_item_ex(id, is_nest) {
     if (is_nest === undefined) {
-      pushHistory(this.get_json_string());
+      this.record_history();
     }
 
     let item = this.get_item(id);
@@ -269,7 +266,7 @@ class DataManager {
    * @param true:前へ移動 / false:後ろへ移動
    */
   change_order_children(id, is_up) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     // 子要素の中から指定IDを探す
     let res = this.find_in_childlen(id);
@@ -352,7 +349,7 @@ class DataManager {
    * @param JSON文字列
    */
   import_json(json_str) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     let json_obj = JSON.parse(json_str);
     if (json_obj !== null) {
@@ -366,7 +363,7 @@ class DataManager {
    * @param JSONオブジェクト
    */
   import_json_ex(json_obj) {
-    pushHistory(this.get_json_string());
+    this.record_history();
 
     if (json_obj !== null) {
       this.g_list_data = json_obj;
@@ -401,6 +398,13 @@ class DataManager {
   }
 
   /**
+   * @summary 現在の状態を編集履歴へ記録
+   */
+  record_history() {
+    pushHistory(this.get_json_string());
+  }
+
+  /**
    * @summary 内部データ保存
    */
   save_json(slot) {
@@ -414,8 +418,7 @@ class DataManager {
    * @summary 内部データ読み込み
    */
   load_json(slot) {
-    pushHistory(this.get_json_string());
-
+    this.record_history();
     let data = loadStorage(this.get_storage_key(slot));
     this.import_json(data);
   }

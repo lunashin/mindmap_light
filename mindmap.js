@@ -78,10 +78,10 @@ function click_handler_save(event) {
     return;
   }
   
-  let yesno = confirm('現在の状態を洗濯中のスロットへ保存しますか？');
+  let slot_info = get_selected_save_slot();
+  let yesno = confirm(`現在の状態を [${slot_info.title}] へ保存しますか？`);
   if (yesno) {
-    let slot_id = get_selected_save_slot();
-    g_data.save_json(slot_id);
+    g_data.save_json(slot_info.id);
     alert('現在の状態を保存しました。');
   }
 }
@@ -90,11 +90,11 @@ function click_handler_save(event) {
 document.getElementById('load_json_btn').addEventListener('click', click_handler_load);
 
 function click_handler_load(event) {
-  let yesno = confirm('現在の状態を破棄して洗濯中のスロットから読み込みますか？');
+  let slot_info = get_selected_save_slot();
+  let yesno = confirm(`現在の状態を破棄して [${slot_info.title}] から読み込みますか？`);
   if (yesno) {
     clear_canvas(true);
-    let slot_id = get_selected_save_slot();
-    g_data.load_json(slot_id);
+    g_data.load_json(slot_info.id);
     show_item_all(true);
   }
 }
@@ -105,8 +105,8 @@ document.getElementById('download_json_btn').addEventListener('click', click_han
 function click_handler_download(event) {
   let json_str = g_data.get_json_string();
   let date_str = get_today_str(false, true, true);
-  let slot_id = get_selected_save_slot();
-  let filename = `${g_download_filename_prefix}_${slot_id}_${date_str}.json`;
+  let slot_info = get_selected_save_slot();
+  let filename = `${g_download_filename_prefix}_${slot_info.id}_${date_str}.json`;
   download_json(filename, json_str);
 }
 
@@ -141,7 +141,7 @@ function keyhandler_window(event) {
 // 要素のキーハンドラ
 function keyhandler_item(event) {
   let id = event.target.dataset.id;
-  let parent_id = event.target.dataset.parent_id;
+  // let parent_id = event.target.dataset.parent_id;
 
   switch (event.keyCode){
     case key_arrow_up:    // ↑
@@ -176,7 +176,7 @@ function keyhandler_item(event) {
       break;
     case key_arrow_left:  // ←
       // 親要素へフォーカス移動
-      set_focus(parseInt(parent_id));
+      set_focus(g_data.get_item(id).parent);
       break;
     case key_arrow_right:  // →
       // 子要素へフォーカス移動
@@ -193,6 +193,10 @@ function keyhandler_item(event) {
       break;
     case key_enter:    // Enter
       event.preventDefault();
+      if (event.ctrlKey) {
+        show_edit_box(event.target, 'edit');
+        break;
+      }
       show_edit_box(event.target, 'add');
       break;
     case key_c:       // c
@@ -288,7 +292,7 @@ function show_item_all(is_clear_canvas) {
 
 /**
  * @summary 要素を描画
- * @param ID
+ * @param root ID
  * @param 基底TOP
  * @param 基底LEFT
  * @returns 最後に描画した要素のTOP
@@ -359,7 +363,7 @@ function create_box(id, parent_id, text, top, left, color) {
   elem.id = get_element_id(id);
   elem.innerHTML = text;
   elem.dataset.id = id;
-  elem.dataset.parent_id = parent_id;
+  // elem.dataset.parent_id = parent_id;
   elem.tabIndex = 1;
   elem.style.top = top;
   elem.style.left = left;
@@ -404,7 +408,7 @@ function show_edit_box(elem_parent, mode) {
 
   // 位置
   let rect_parent = elem_parent.getBoundingClientRect();
-  elem.style.top = rect_parent.top - 20;
+  elem.style.top = rect_parent.top - 20 + window.scrollY;
   elem.style.left = rect_parent.right;
   elem.style.position = 'absolute';
 
@@ -466,6 +470,10 @@ function handler_edit_submit(event) {
 function handler_edit_cancel(event) {
   event.target.value = '';
   event.target.remove();
+
+  // フォーカスを戻す
+  let parent_id = event.target.dataset.parent_id;
+  document.getElementById(get_element_id(parent_id)).focus();
 }
 
 /**
@@ -508,14 +516,14 @@ function set_save_slot_select() {
 
 /**
  * @summary 選択している保存スロットID取得
- * @returns スロットID
+ * @returns {title: タイトル, id: スロットID}
  */
 function get_selected_save_slot() {
   let elems = get_selected_option('select_save_slot');
   if (elems.length <= 0) {
     return;
   }
-  return elems[0].dataset.id;
+  return  {title: elems[0].text, id: elems[0].dataset.id};
 }
 
 
