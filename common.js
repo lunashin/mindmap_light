@@ -34,6 +34,8 @@ const key_7 = 55;
 const key_8 = 56;
 const key_9 = 57;
 
+const key_plus = 187;
+const key_astar = 222;
 
 
 //---------------------------------------

@@ -153,6 +153,8 @@ function keyhandler_item(event) {
   let id = event.target.dataset.id;
   // let parent_id = event.target.dataset.parent_id;
 
+  console.log(event.keyCode, event.shiftKey, event.ctrlKey, event.altKey);
+
   switch (event.keyCode){
     case key_arrow_up:    // ↑
       if (event.altKey) {
@@ -270,6 +272,22 @@ function keyhandler_item(event) {
       g_data.set_color(id, g_color_red);
       draw_item_all();
       break;
+    case key_plus:       // +
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_size(id, 'middle');
+        draw_item_all();
+        break;
+      }
+      break;
+    case key_astar:       // *
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_size(id, 'big');
+        draw_item_all();
+        break;
+      }
+      break;
   }
 }
 
@@ -340,9 +358,17 @@ function draw_item(id, parent_id, base_top, base_left) {
     elem.style.backgroundColor = item.color;
     elem.style.top = base_top;
     elem.style.left = base_left;
+    if (item.size !== '') {
+      elem.classList.remove('middle');
+      elem.classList.remove('big');
+      elem.classList.add(item.size);
+    } else {
+      elem.classList.remove('middle');
+      elem.classList.remove('big');
+    }
   } else {
     // 要素作成
-    elem = create_box(item.id, item.parent, item.text, base_top, base_left, item.color);
+    elem = create_box(item.id, item.parent, item.text, item.size, base_top, base_left, item.color);
     let elem_parent = document.getElementById(get_element_id(parent_id));
     if (elem_parent !== null) {
       item.line = create_line(elem_parent, elem); // 線を引く
@@ -367,17 +393,17 @@ function draw_item(id, parent_id, base_top, base_left) {
  * @param 基底LEFT
  * @returns 最後に描画した要素のTOP
  */
-// function make_table_html(id, parent_id, row, col) {
-//   let item = g_data.get_item(id);
+function make_table_html(id, parent_id, row, col) {
+  let item = g_data.get_item(id);
 
-//   // 子要素を描画 (再帰)
-//   for (let i = 0; i < item.children.length; i++) {
-//     row_last = draw_item(item.children[i], id, row, col+1);
-//     top_sub = row_last + 1;
-//   }
+  // 子要素を描画 (再帰)
+  for (let i = 0; i < item.children.length; i++) {
+    row_last = draw_item(item.children[i], id, row, col+1);
+    top_sub = row_last + 1;
+  }
 
-//   return top_last;
-// }
+  return top_last;
+}
 
 /**
  * @summary 要素div削除
@@ -409,7 +435,7 @@ function clear_canvas() {
  * @param 描画位置(LEFT)
  * @returns 要素
  */
-function create_box(id, parent_id, text, top, left, color) {
+function create_box(id, parent_id, text, size, top, left, color) {
   // 要素を作成
   let elem = document.createElement('div');
   elem.id = get_element_id(id);
@@ -421,6 +447,7 @@ function create_box(id, parent_id, text, top, left, color) {
   elem.style.left = left;
   elem.style.backgroundColor = color;
   elem.classList.add('item');
+  elem.classList.add(size);
   elem.addEventListener("keydown", keyhandler_item);
   elem.addEventListener("dblclick", dblclick_handler_item);
   elem.addEventListener("transitionstart", transitionStart_handler);

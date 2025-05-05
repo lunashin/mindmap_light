@@ -103,7 +103,13 @@ class DataManager {
     if (children !== null) {
       children_copy= children.concat();
     }
-    return { id: id, text: text, color: "", parent: parent_id, children: children_copy};
+    return { 
+      id: id, 
+      text: text, 
+      color: "", 
+      size: "",
+      parent: parent_id, 
+      children: children_copy};
   }
 
   /**
@@ -130,6 +136,19 @@ class DataManager {
       item.color = '';
     } else {
       item.color = color;
+    }
+  }
+
+  /**
+   * @summary サイズ設定
+   * @param サイズ('', 'middle, 'big')
+   */
+  set_size(id, size) {
+    let item = this.get_item(id);
+    if (size === null) {
+      item.size = '';
+    } else {
+      item.size = size;
     }
   }
 
@@ -468,6 +487,44 @@ class DataManager {
   }
 
   /**
+   * @summary 内部データを構造化した配列取得
+   * @returns 配列
+   */
+  get_array(id, dest) {
+    // 初回呼び出しは配列初期化
+    if (dest === undefined) {
+      dest = [];
+    }
+
+    let item = g_data.get_item(id);
+    dest.push(id);
+
+    for (let i = 0; i < item.children.length; i++) {
+      get_array(item.children[i], dest);
+    }
+    return dest;
+  }
+
+  /**
+   * @summary キャンバスのサイズを取得 (実装中)
+   * @returns {h: [横の要素数], w: [縦の要素数]}
+   */
+  get_canvas_size() {
+  }
+
+  calc_canvas_size(id, base_top, base_left) {
+    let item = this.get_item(id);
+    let top_sub = base_top;
+    let top_last = base_top;
+    for (let i = 0; i < item.children.length; i++) {
+      top_last = this.calc_canvas_size(item.children[i], top_sub, base_left + 1);
+      top_sub = top_last + 1;
+    }
+  
+    return top_last;
+  }
+
+  /**
    * @summary 現在の状態を編集履歴へ記録
    */
   record_history() {
@@ -476,6 +533,7 @@ class DataManager {
 
   /**
    * @summary 内部データ保存
+   * @param スロットID
    */
   save_json(slot) {
     // JSON文字列取得
@@ -486,6 +544,7 @@ class DataManager {
 
   /**
    * @summary 内部データ読み込み
+   * @param スロットID
    */
   load_json(slot) {
     this.record_history();
@@ -495,6 +554,8 @@ class DataManager {
 
   /**
    * @summary storageへアクセスするキー取得
+   * @param スロットID
+   * @returns storage保存用キー
    */
   get_storage_key(slot) {
     return key_internal_data + '_' + slot;
