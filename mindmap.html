@@ -44,8 +44,8 @@
           border-radius: 10px; 
           border-width: 3px;
           position: absolute;
-          transition-property: top, left;
-          transition-duration: 0.1s, 0.1s;
+          transition-property: top, left, width;
+          transition-duration: 0.1s, 0.1s, 0.1s;
         }
         .item:focus { background-color: pink; border-color: pink; }
 
@@ -82,9 +82,12 @@
 
     <!-- Clear Canvas-->
     <button id="clear_canvas" class="button-mid">Clear</button>
-
   </div>
 
+  <!-- Cut Mark -->
+  <label for="text_cut_mark_id">Cut</label>
+  <input type="text" id="text_cut_mark_id" readonly>
+  
 
   <!-- Canvas -->
    <div class="">

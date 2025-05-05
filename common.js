@@ -13,6 +13,8 @@ const key_f = 70;
 const key_i = 73;
 const key_n = 78;
 const key_s = 83;
+const key_v = 86;
+const key_x = 88;
 const key_z = 90;
 const key_arrow_left = 37;
 const key_arrow_up = 38;
@@ -67,6 +69,10 @@ function loadStorage(name)
  */
 function copy_text(text) {
   navigator.clipboard.writeText(text);
+}
+
+function read_clipboard(func) {
+  navigator.clipboard.readText().then(func);
 }
 
 // 履歴保存

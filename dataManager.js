@@ -282,6 +282,28 @@ class DataManager {
     }
   }
 
+  /**
+   * 要素を付け替え
+   * @param {*} 対象ID 
+   * @param {*} 親ID
+   */
+  chage_parent(id, parent) {
+    this.record_history();
+
+    // 元の親要素の子要素から削除
+    let info = this.find_in_childlen(id);
+    if (info === null) {
+      return;
+    }
+    info.children.splice(info.pos, 1);
+
+    // 親を付け替え
+    this.get_item(id).parent = parent;
+
+    // 親要素の子要素へ追加
+    this.get_item(parent).children.push(id);
+  }
+
   /** 
    * @summary 同一子配列中の隣のID取得
    * @param true:前のID / false:後ろのID
@@ -395,6 +417,54 @@ class DataManager {
         delete temp_dict[keys[i]].line;
       }
     return JSON.stringify(temp_dict, null , "  ");
+  }
+
+  /**
+   * @summary 指定IDの配下要素のJSON文字列取得
+   * @param {Int} ID
+   * @param {boolean} 指定IDをルート(ID:0)として切り出す
+   * @returns JSON文字列
+   */
+  get_sub_items_json(id, as_root) {
+    // 配下要素のIDリストを取得
+    let ids = this.get_children_ids(id);
+    // 各要素のJSONを集める
+    let dict = {};
+    for(let i = 0; i < ids.length; i++) {
+      dict[ids[i]] = JSON.parse(JSON.stringify(this.get_item(ids[i])));
+    }
+    // 指定ID要素をルートとする
+    if (as_root) {
+      dict['0'] = dict[id];
+      dict['0'].id = 0;
+      dict['0'].parent = -1;
+      delete dict[id];
+      let keys = Object.keys(dict);
+      for (let i = 0; i < keys.length; i++) {
+        if (dict[keys[i]].parent == id) {
+          dict[keys[i]].parent = 0;
+        }
+      }
+    }
+    return JSON.stringify(dict);
+  }
+
+  /**
+   * @summary 子要素のID一覧を取得
+   * @param {} id 
+   * @returns 子要素リスト(配列)
+   */
+  get_children_ids(id, dest) {
+    if (dest === undefined) {
+      dest = [];
+    }
+    dest.push(id);
+
+    let item = this.get_item(id);
+    for (let i = 0; i < item.children.length; i++) {
+      this.get_children_ids(item.children[i], dest);
+    }
+    return dest;
   }
 
   /**

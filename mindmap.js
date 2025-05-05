@@ -24,7 +24,14 @@ const g_download_filename_prefix = 'mindmap_json';
 // Data Manager
 var g_data = new DataManager();
 
+// Color
+const g_color_yellow = '#FFFF99';
+const g_color_blue = '#33CCFF'
+const g_color_green = '#99FF99'
+const g_color_red = '#FF6699'
 
+// Cut mark
+g_mark_cut_id = -1;
 
 
 
@@ -63,7 +70,7 @@ document.getElementById('import_json_btn').addEventListener('click', click_handl
 function click_handler_import_json(event) {
   let json_str = document.getElementById('import_json_text').value;
   g_data.import_json(json_str);
-  show_item_all(true);
+  draw_item_all(true);
 }
 
 // Save
@@ -95,7 +102,7 @@ function click_handler_load(event) {
   if (yesno) {
     clear_canvas(true);
     g_data.load_json(slot_info.id);
-    show_item_all(true);
+    draw_item_all(true);
   }
 }
 
@@ -116,7 +123,7 @@ document.getElementById('clear_canvas').addEventListener('click', click_handler_
 function click_handler_clear_canvas(event) {
   clear_canvas();
   g_data.import_json(JSON.stringify(g_data.g_list_data_init));
-  show_item_all(true);
+  draw_item_all(true);
 }
 
 
@@ -125,15 +132,18 @@ function click_handler_clear_canvas(event) {
 function keyhandler_window(event) {
   switch (event.keyCode){
     case key_z:       // z
-    if (event.ctrlKey) {
-      event.preventDefault();
-      if (getHistoryNum() > 0) {
-        clear_canvas();
-        g_data.undo();
-        show_item_all(true);
+      if (event.ctrlKey) {
+        event.preventDefault();
+        if (getHistoryNum() > 0) {
+          clear_canvas();
+          g_data.undo();
+          draw_item_all(true);
+        }
       }
-    }
-    break;
+      break;
+    case key_esc:     // ESC
+      clear_mark_cut();
+      break;
   }
 }
 
@@ -149,7 +159,7 @@ function keyhandler_item(event) {
         event.preventDefault();
         // 子要素の順番変更
         g_data.change_order_children(id, true);
-        show_item_all();
+        draw_item_all();
         break;
       }
       // 前の子要素へフォーカス移動
@@ -164,7 +174,7 @@ function keyhandler_item(event) {
         event.preventDefault();
         // 子要素の順番変更
         g_data.change_order_children(id, false);
-        show_item_all();
+        draw_item_all();
         break;
       }
       // 後ろの子要素へフォーカス移動
@@ -202,15 +212,19 @@ function keyhandler_item(event) {
     case key_c:       // c
       if (event.altKey) {
         event.preventDefault();
-        // Copy JSON Bottom this
-        copy_json(id);
+        copy_json(id);    // Copy JSON Bottom this
+        break;
+      }
+      if (event.ctrlKey) {
+        event.preventDefault();
+        copy_sub_items_json(id);
       }
       break;
     case key_d:       // d
       event.preventDefault();
       // g_data.remove_item_ex(id);
       g_data.remove_item(id)
-      show_item_all();
+      draw_item_all();
       break;
     case key_e:       // e
       event.preventDefault();
@@ -221,21 +235,40 @@ function keyhandler_item(event) {
       event.preventDefault();
       show_edit_box(event.target, 'insert');
       break;
+    case key_v:       // v
+      if (event.ctrlKey) {
+        event.preventDefault();
+        // 選択中ID配下へカット対象を付け替え
+        if (g_mark_cut_id !== -1) {
+          g_data.chage_parent(g_mark_cut_id, id);
+          draw_item_all();
+          clear_mark_cut();
+        }
+        break;
+      }
+      break;
+    case key_x:       // x
+      mark_cut(id);
+      break;
     case key_0:       // 0
       g_data.set_color(id, null);
-      show_item_all();
+      draw_item_all();
       break;
     case key_1:       // 1
-      g_data.set_color(id, '#FFFF99');
-      show_item_all();
+      g_data.set_color(id, g_color_yellow);
+      draw_item_all();
       break;
     case key_2:       // 2
-      g_data.set_color(id, '#33CCFF');
-      show_item_all();
+      g_data.set_color(id, g_color_blue);
+      draw_item_all();
       break;
     case key_3:       // 3
-      g_data.set_color(id, '#FF6699');
-      show_item_all();
+      g_data.set_color(id, g_color_green);
+      draw_item_all();
+      break;
+    case key_4:       // 4
+      g_data.set_color(id, g_color_red);
+      draw_item_all();
       break;
   }
 }
@@ -283,26 +316,26 @@ function transitionEnd_handler(event) {
  * @summary 全てを描画
  * @param キャンバスをクリアするかどうか
  */
-function show_item_all(is_clear_canvas) {
+function draw_item_all(is_clear_canvas) {
   if(is_clear_canvas) {
     clear_canvas();
   }
-  show_item(0, -1, g_top_base, g_left_base);
+  draw_item(0, -1, g_top_base, g_left_base);
 }
 
 /**
- * @summary 要素を描画
+ * @summary 要素を描画 (配下要素すべて)
  * @param root ID
  * @param 基底TOP
  * @param 基底LEFT
  * @returns 最後に描画した要素のTOP
  */
-function show_item(id, parent_id, base_top, base_left) {
+function draw_item(id, parent_id, base_top, base_left) {
   let item = g_data.get_item(id);
 
   let elem = document.getElementById(get_element_id(id));
   if (elem !== null) {
-    // すでに要素が存在する場合は、既存要素へ変更を加える
+    // すでに要素が存在する場合は、既存要素を変更
     elem.innerHTML = item.text;
     elem.style.backgroundColor = item.color;
     elem.style.top = base_top;
@@ -320,12 +353,31 @@ function show_item(id, parent_id, base_top, base_left) {
   let top_sub = base_top;
   let top_last = base_top;
   for (let i = 0; i < item.children.length; i++) {
-    top_last = show_item(item.children[i], id, top_sub, base_left + g_left_margin);
+    top_last = draw_item(item.children[i], id, top_sub, base_left + g_left_margin);
     top_sub = top_last + g_top_margin;
   }
 
   return top_last;
 }
+
+/**
+ * @summary 要素を描画 (配下要素すべて)
+ * @param root ID
+ * @param 基底TOP
+ * @param 基底LEFT
+ * @returns 最後に描画した要素のTOP
+ */
+// function make_table_html(id, parent_id, row, col) {
+//   let item = g_data.get_item(id);
+
+//   // 子要素を描画 (再帰)
+//   for (let i = 0; i < item.children.length; i++) {
+//     row_last = draw_item(item.children[i], id, row, col+1);
+//     top_sub = row_last + 1;
+//   }
+
+//   return top_last;
+// }
 
 /**
  * @summary 要素div削除
@@ -458,7 +510,7 @@ function handler_edit_submit(event) {
     if (mode === 'insert') {
       g_data.insert_item(event.target.dataset.parent_id, text);
     }
-    show_item_all();
+    draw_item_all();
   }
   // フォーカス
   document.getElementById(get_element_id(parent_id)).focus();
@@ -526,6 +578,35 @@ function get_selected_save_slot() {
   return  {title: elems[0].text, id: elems[0].dataset.id};
 }
 
+/**
+ * @summary 指定ID配下要素のJSONをコピー
+ */
+function copy_sub_items_json(id) {
+  // 指定ID配下のJSON取得
+  let json_str_sub = g_data.get_sub_items_json(id);
+  // コピー
+  copy_text(json_str_sub);
+}
+
+/**
+ * @summary カット対象としてマーク
+ * @param {*} id 
+ */
+function mark_cut(id) {
+  g_mark_cut_id = id;
+  document.getElementById('text_cut_mark_id').value = g_data.get_item(id).text;
+}
+
+/**
+ * @summary カット対象をクリア
+ */
+function clear_mark_cut() {
+  g_mark_cut_id = -1;
+  document.getElementById('text_cut_mark_id').value = '';
+}
+
+
+
 
 
 //---------------------------------------
@@ -536,4 +617,4 @@ function get_selected_save_slot() {
 set_save_slot_select();
 
 // 要素描画
-show_item_all();
+draw_item_all();
