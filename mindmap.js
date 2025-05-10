@@ -126,7 +126,12 @@ function click_handler_clear_canvas(event) {
   draw_item_all(true);
 }
 
+// Copy Talbe
+document.getElementById('copy_table').addEventListener('click', click_handler_copy_table);
 
+function click_handler_copy_table(event) {
+  copy_html_table();
+}
 
 // windowのキーハンドラ
 function keyhandler_window(event) {
@@ -447,7 +452,9 @@ function create_box(id, parent_id, text, size, top, left, color) {
   elem.style.left = left;
   elem.style.backgroundColor = color;
   elem.classList.add('item');
-  elem.classList.add(size);
+  if (size !== undefined && size !== '') {
+    elem.classList.add(size);
+  }
   elem.addEventListener("keydown", keyhandler_item);
   elem.addEventListener("dblclick", dblclick_handler_item);
   elem.addEventListener("transitionstart", transitionStart_handler);
@@ -579,6 +586,18 @@ function copy_json(id){
   let str = g_data.get_json_string();
   copy_text(str);
 }
+
+/**
+ * @summary テーブルをコピー(エクセル用)
+ */
+function copy_html_table() {
+  let html = g_data.get_html_table();
+  const item = new ClipboardItem({
+    'text/html': new Blob([html], { type: 'text/html' })
+  });
+  navigator.clipboard.write([item]);
+}
+
 
 /**
  * @summary 保存スロット選択リスト設定

@@ -487,25 +487,6 @@ class DataManager {
   }
 
   /**
-   * @summary 内部データを構造化した配列取得
-   * @returns 配列
-   */
-  get_array(id, dest) {
-    // 初回呼び出しは配列初期化
-    if (dest === undefined) {
-      dest = [];
-    }
-
-    let item = g_data.get_item(id);
-    dest.push(id);
-
-    for (let i = 0; i < item.children.length; i++) {
-      get_array(item.children[i], dest);
-    }
-    return dest;
-  }
-
-  /**
    * @summary キャンバスのサイズを取得 (実装中)
    * @returns {h: [横の要素数], w: [縦の要素数]}
    */
@@ -559,6 +540,93 @@ class DataManager {
    */
   get_storage_key(slot) {
     return key_internal_data + '_' + slot;
+  }
+
+  /**
+   * @summary 内部データを配列化したデータを取得
+   * @param ID
+   * @param ID格納先配列(2次元配列)
+   * @param 配列位置(縦)
+   * @param 配列位置(横)
+   * @returns 最後の縦位置
+   */
+  get_array(id, dest, pos_vertical, pos_depth) {
+    console.log(id, pos_vertical, pos_depth);
+
+    let item = this.get_item(id);
+    dest[pos_vertical][pos_depth] = item.id;
+
+    for (let i = 0; i < item.children.length; i++) {
+      pos_vertical = this.get_array(item.children[i], dest, pos_vertical, pos_depth + 1);
+      pos_vertical++;
+    }
+    if (item.children.length > 0) {
+      pos_vertical--;
+    }
+
+    return pos_vertical;
+  }
+
+  /**
+   * @summary 内部データを配列に変換
+   * @returns 配列
+   */
+  exchange_internal_to_array() {
+    let dest = [];
+    let dest_sub = [];
+
+    // 配列初期化 (100 x 200)
+    // 横
+    for (let i = 0; i < 100; i++) {
+      dest_sub.push('');
+    }
+    // 縦
+    for (let i = 0; i < 200; i++) {
+      dest.push(dest_sub.concat());
+    }
+
+    this.get_array(0, dest, 0, 0);
+    return dest;
+  }
+
+  /**
+   * @summary HTMLテーブルを作成
+   * @returns HTMLテーブル
+   */
+  get_html_table() {
+    let array = this.exchange_internal_to_array();
+    let html = '';
+
+    html += '<table>';
+    html += '<tbody>';
+    html += '\n';
+    for (let i = 0; i < array.length; i++) {
+      let array_td = [];
+      html += '<tr>';
+      html += '\n';
+      for (let k = 0; k < array[i].length; k++) {
+        // 横方向
+        if (array[i][k] === '') {
+          let td = `<td></th>`;
+          array_td.push(td);
+          continue;
+        }
+        let item = this.get_item(array[i][k]);
+        let style = '';
+        if (item.color !== '') {
+          style = `style="color: ${item.color};"`;
+        }
+        let td = `<td ${style} >${item.text}</th>`;
+        array_td.push(td);
+      }
+      html += array_td.join('');
+      html += '</tr>';
+      html += '\n';
+    }
+    html += '</tbody>';
+    html += '</table>';
+
+    return html;
   }
 
 }
