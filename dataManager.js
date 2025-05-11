@@ -140,6 +140,19 @@ class DataManager {
   }
 
   /**
+   * @summary 太字設定(トグル)
+   * @param ID
+   */
+  toggle_bold(id) {
+    this.record_history();
+    let now = this.get_item(id).is_bold;
+    if (now === undefined) {
+      now = false;
+    }
+    this.get_item(id).is_bold = !now;
+  }
+
+  /**
    * @summary サイズ設定
    * @param サイズ('', 'middle, 'big')
    */
@@ -150,6 +163,36 @@ class DataManager {
     } else {
       item.size = size;
     }
+  }
+
+  /**
+   * @summary 方向設定
+   * @param 方向('right' or 'left')
+   */
+  set_direction(id, direction) {
+    let item = this.get_item(id);
+    if (direction === 'right') {
+      delete item.direction;
+    } else {
+      item.direction = direction;
+    }
+  }
+
+  /**
+   * @summary 方向設定
+   * @param 方向('right' or 'left')
+   * @param true:rootまで遡って検査する / false:指定IDのみ
+   */
+  get_direction(id, check_root) {
+    let item = this.get_item(id);
+    if (check_root) {
+      if (item.parent != 0) {
+        return this.get_direction(item.parent, true);
+      } else {
+        return item.direction;
+      }
+    }
+    return item.direction;
   }
 
   /**

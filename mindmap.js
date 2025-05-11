@@ -9,9 +9,11 @@
 //---------------------------------------
 
 const g_top_base = 100;
-const g_left_base = 100;
+const g_left_base = 1000;
 const g_top_margin = 50;
 const g_left_margin = 150;
+const edit_cols = '20';
+const edit_rows = '2';
 
 
 // localStrage Key
@@ -156,7 +158,7 @@ function keyhandler_window(event) {
 // 要素のキーハンドラ
 function keyhandler_item(event) {
   let id = event.target.dataset.id;
-  // let parent_id = event.target.dataset.parent_id;
+  let parent = event.target.dataset.parent_id;
 
   console.log(event.keyCode, event.shiftKey, event.ctrlKey, event.altKey);
 
@@ -192,10 +194,26 @@ function keyhandler_item(event) {
       }
       break;
     case key_arrow_left:  // ←
+      if(event.shiftKey) {
+        // 左へ配置(root直下の場合)
+        if (g_data.get_item(id).parent == 0) {
+          g_data.set_direction(id, 'left');
+          draw_item_all();
+        }
+        break;
+      }
       // 親要素へフォーカス移動
       set_focus(g_data.get_item(id).parent);
       break;
     case key_arrow_right:  // →
+      if(event.shiftKey) {
+        // 右へ配置(root直下の場合)
+        if (g_data.get_item(id).parent == 0) {
+          g_data.set_direction(id, 'right');
+          draw_item_all();
+        }
+        break;
+      }
       // 子要素へフォーカス移動
       let item = g_data.get_item(parseInt(id));
       if (item.children.length <= 0) {
@@ -207,6 +225,12 @@ function keyhandler_item(event) {
       event.preventDefault();
       // 要素追加
       show_edit_box(event.target, 'add');
+      break;
+    case key_b:    // b
+      event.preventDefault();
+      // 太字設定
+      g_data.toggle_bold(id);
+      draw_item_all();
       break;
     case key_enter:    // Enter
       event.preventDefault();
@@ -320,7 +344,7 @@ function transitionStart_handler(event) {
  */
 function transitionEnd_handler(event) {
   let item = g_data.get_item(this.dataset.id);
-  item.line = create_line(document.getElementById(get_element_id(item.parent)), this);
+  item.line = create_line(document.getElementById(get_element_id(item.parent)), this, g_data.get_direction(this.dataset.id, true));
 }
 
 
@@ -351,15 +375,16 @@ function draw_item_all(is_clear_canvas) {
  * @param root ID
  * @param 基底TOP
  * @param 基底LEFT
+ * @param 展開方向('right'(default) or 'left')
  * @returns 最後に描画した要素のTOP
  */
-function draw_item(id, parent_id, base_top, base_left) {
+function draw_item(id, parent_id, base_top, base_left, direction) {
   let item = g_data.get_item(id);
-
+  
   let elem = document.getElementById(get_element_id(id));
   if (elem !== null) {
     // すでに要素が存在する場合は、既存要素を変更
-    elem.innerHTML = item.text;
+    elem.innerHTML = item.text.replaceAll('\n', '<br>');
     elem.style.backgroundColor = item.color;
     elem.style.top = base_top;
     elem.style.left = base_left;
@@ -371,20 +396,54 @@ function draw_item(id, parent_id, base_top, base_left) {
       elem.classList.remove('middle');
       elem.classList.remove('big');
     }
+    if (item.is_bold) {
+      elem.classList.add('bold');
+    } else {
+      elem.classList.remove('bold');
+    }
   } else {
     // 要素作成
-    elem = create_box(item.id, item.parent, item.text, item.size, base_top, base_left, item.color);
+    elem = create_box(id, base_top, base_left);
     let elem_parent = document.getElementById(get_element_id(parent_id));
     if (elem_parent !== null) {
-      item.line = create_line(elem_parent, elem); // 線を引く
+      item.line = create_line(elem_parent, elem, direction); // 線を引く
     }
   }
 
+  // rootの直下のみ、右方向を先に描画するため、左側を後ろへ並び替え
+  if (item.id === 0) {
+    item.children.sort((a, b) => {
+      let d1 = g_data.get_item(a).direction;
+      let d2 = g_data.get_item(b).direction;
+      console.log(a, d1, b, d2);
+      if (d1 === undefined) { d1 = 'right'; }
+      if (d2 === undefined) { d2 = 'right'; }
+      if (d1 !== d2 && d1 === 'left') {return 1;}
+      if (d1 !== d2 && d2 === 'left') {return -1;}
+      return 0;
+    });
+  }
+
   // 子要素を描画 (再帰)
+  let is_change_direction = false;
   let top_sub = base_top;
   let top_last = base_top;
   for (let i = 0; i < item.children.length; i++) {
-    top_last = draw_item(item.children[i], id, top_sub, base_left + g_left_margin);
+    // 展開方向
+    let direction_child = g_data.get_item(item.children[i]).direction;
+    if (direction_child === undefined) {
+      direction_child = direction;
+    }
+    let left_margin_coef = 1;
+    if (direction_child === 'left') {
+      left_margin_coef = -1;
+    }
+    // root直下で方向が変わった場合はtopをリセット
+    if (item.id === 0 && !is_change_direction && direction_child !== direction) {
+      top_sub = base_top;
+      is_change_direction = true;
+    }
+    top_last = draw_item(item.children[i], id, top_sub, base_left + g_left_margin * left_margin_coef, direction_child);
     top_sub = top_last + g_top_margin;
   }
 
@@ -440,21 +499,26 @@ function clear_canvas() {
  * @param 描画位置(LEFT)
  * @returns 要素
  */
-function create_box(id, parent_id, text, size, top, left, color) {
+function create_box(id, top, left) {
   // 要素を作成
+  let item = g_data.get_item(id);
   let elem = document.createElement('div');
-  elem.id = get_element_id(id);
-  elem.innerHTML = text;
-  elem.dataset.id = id;
-  // elem.dataset.parent_id = parent_id;
+  elem.id = get_element_id(item.id);
+  elem.innerHTML = item.text.replaceAll('\n', '<br>');
+  elem.dataset.id = item.id;
   elem.tabIndex = 1;
   elem.style.top = top;
   elem.style.left = left;
-  elem.style.backgroundColor = color;
+  elem.style.backgroundColor = item.color;
   elem.classList.add('item');
-  if (size !== undefined && size !== '') {
-    elem.classList.add(size);
+  if (item.size !== undefined && item.size !== '') {
+    elem.classList.add(item.size);
   }
+  if (item.is_bold) {
+    elem.classList.add('bold');
+  }
+
+  // event handler
   elem.addEventListener("keydown", keyhandler_item);
   elem.addEventListener("dblclick", dblclick_handler_item);
   elem.addEventListener("transitionstart", transitionStart_handler);
@@ -470,10 +534,17 @@ function create_box(id, parent_id, text, size, top, left, color) {
  * @summary 線を描く
  * @param 要素1
  * @param 要素2
+ * @param 展開方向("right"(default) or "left")
  * @returns オブジェクト
  */
-function create_line(elem1, elem2) {
-  return new LeaderLine(elem1, elem2, {path: 'fluid', startSocket: 'right', endSocket: 'left'});
+function create_line(elem1, elem2, direction) {
+  let startSocket = 'right';
+  let endSocket  = 'left';
+  if (direction === 'left') {
+    startSocket = 'left';
+    endSocket = 'right';
+  }
+  return new LeaderLine(elem1, elem2, {path: 'fluid', startSocket: startSocket, endSocket: endSocket});
 }
 
 /**
@@ -482,9 +553,10 @@ function create_line(elem1, elem2) {
  * @param モード('add', 'edit', 'insert')
  */
 function show_edit_box(elem_parent, mode) {
-  let elem = document.createElement('input');
+  let elem = document.createElement('textarea');
   // 属性
-  elem.type = 'text';
+  elem.cols = edit_cols;
+  elem.rows = edit_rows;
   elem.dataset.parent_id = elem_parent.dataset.id;
   elem.dataset.mode = mode;
   // テキスト
@@ -505,8 +577,10 @@ function show_edit_box(elem_parent, mode) {
   elem.addEventListener("keydown", function(event){ 
     // enter
     if (event.keyCode === key_enter) {
-      event.preventDefault(); // 既定の動作をキャンセル
-      handler_edit_submit(event);
+      if (!event.shiftKey) {
+        event.preventDefault(); // 既定の動作をキャンセル
+        handler_edit_submit(event);
+      }
     } 
     // ESC
     if (event.keyCode === key_esc) {
@@ -525,24 +599,25 @@ function show_edit_box(elem_parent, mode) {
  * @summary エディットボックス 決定
  */
 function handler_edit_submit(event) {
+  let elem = event.target;
   // テキスト取得
-  let text = event.target.value;
+  let text = elem.value;
   // モード
-  let mode = event.target.dataset.mode;
+  let mode = elem.dataset.mode;
   // 親ID
-  let parent_id = event.target.dataset.parent_id;
+  let parent_id = elem.dataset.parent_id;
   // 要素削除
-  event.target.remove();
+  elem.remove();
   // 要素追加
   if (text !== '') {
     if (mode === 'add') {
-      g_data.add_new_item(event.target.dataset.parent_id, text);
+      g_data.add_new_item(parent_id, text);
     }
     if (mode === 'edit') {
-      g_data.set_text(event.target.dataset.parent_id, text);
+      g_data.set_text(parent_id, text);
     }
     if (mode === 'insert') {
-      g_data.insert_item(event.target.dataset.parent_id, text);
+      g_data.insert_item(parent_id, text);
     }
     draw_item_all();
   }

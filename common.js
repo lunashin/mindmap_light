@@ -6,6 +6,7 @@
 // https://developer.mozilla.org/ja/docs/Web/API/KeyboardEvent/keyCode
 const key_enter = 13;
 const key_a = 65;
+const key_b = 66;
 const key_c = 67;
 const key_d = 68;
 const key_e = 69;
