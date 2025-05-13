@@ -31,6 +31,7 @@ const g_color_yellow = '#FFFF99';
 const g_color_blue = '#33CCFF'
 const g_color_green = '#99FF99'
 const g_color_red = '#FF6699'
+const g_color_grey = '#777777'
 
 // Cut mark
 g_mark_cut_id = -1;
@@ -224,7 +225,7 @@ function keyhandler_item(event) {
     case key_a:    // a
       event.preventDefault();
       // 要素追加
-      show_edit_box(event.target, 'add');
+      show_edit_box(id, 'textarea', 'add', 'text');
       break;
     case key_b:    // b
       event.preventDefault();
@@ -235,10 +236,10 @@ function keyhandler_item(event) {
     case key_enter:    // Enter
       event.preventDefault();
       if (event.ctrlKey) {
-        show_edit_box(event.target, 'edit');
+        show_edit_box(id, 'textarea', 'edit', 'text');
         break;
       }
-      show_edit_box(event.target, 'add');
+      show_edit_box(id, 'textarea', 'add', 'text');
       break;
     case key_c:       // c
       if (event.altKey) {
@@ -259,12 +260,17 @@ function keyhandler_item(event) {
       break;
     case key_e:       // e
       event.preventDefault();
-      show_edit_box(event.target, 'edit');
+      show_edit_box(id, 'textarea', 'edit', 'text');
       break;
     case key_i:       // i
       // 要素挿入
       event.preventDefault();
-      show_edit_box(event.target, 'insert');
+      show_edit_box(id, 'textarea', 'insert', 'text');
+      break;
+    case key_l:       // L
+      // URL設定
+      event.preventDefault();
+      show_edit_box(id, 'edit', 'edit', 'url');
       break;
     case key_v:       // v
       if (event.ctrlKey) {
@@ -301,6 +307,10 @@ function keyhandler_item(event) {
       g_data.set_color(id, g_color_red);
       draw_item_all();
       break;
+    case key_5:       // 5
+      g_data.set_color(id, g_color_grey);
+      draw_item_all();
+      break;
     case key_plus:       // +
       if (event.shiftKey) {
         event.preventDefault();
@@ -324,7 +334,7 @@ function keyhandler_item(event) {
  * 要素ダブルクリック
  */
 function dblclick_handler_item(event) {
-  show_edit_box(event.target, 'add');
+  show_edit_box(event.target.dataset.id, 'textarea', 'add', 'text');
 }
 
 /**
@@ -384,7 +394,12 @@ function draw_item(id, parent_id, base_top, base_left, direction) {
   let elem = document.getElementById(get_element_id(id));
   if (elem !== null) {
     // すでに要素が存在する場合は、既存要素を変更
-    elem.innerHTML = item.text.replaceAll('\n', '<br>');
+    let text = item.text.replaceAll('\n', '<br>');
+    if (item.url !== undefined && item.url !== '') {
+      elem.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    } else {
+      elem.innerHTML = text;
+    }
     elem.style.backgroundColor = item.color;
     elem.style.top = base_top;
     elem.style.left = base_left;
@@ -504,7 +519,12 @@ function create_box(id, top, left) {
   let item = g_data.get_item(id);
   let elem = document.createElement('div');
   elem.id = get_element_id(item.id);
-  elem.innerHTML = item.text.replaceAll('\n', '<br>');
+  let text = item.text.replaceAll('\n', '<br>');
+  if (item.url !== undefined && item.url !== '') {
+    elem.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  } else {
+    elem.innerHTML = text;
+  }
   elem.dataset.id = item.id;
   elem.tabIndex = 1;
   elem.style.top = top;
@@ -550,22 +570,42 @@ function create_line(elem1, elem2, direction) {
 /**
  * @summary テキストボックス作成
  * @param 親要素
+ * @param 種類('edit', 'textarea')
  * @param モード('add', 'edit', 'insert')
+ * @param 編集対象属性('text', 'url')
  */
-function show_edit_box(elem_parent, mode) {
-  let elem = document.createElement('textarea');
+function show_edit_box(id, type, mode, target_attr) {
+  let elem = null;
+  if (type === 'textarea') {
+    elem = document.createElement('textarea');
+  }
+  if (type === 'edit') {
+    elem = document.createElement('input');
+    elem.type = 'text';
+  }
   // 属性
-  elem.cols = edit_cols;
-  elem.rows = edit_rows;
-  elem.dataset.parent_id = elem_parent.dataset.id;
+  if (type === 'textarea') {
+    elem.cols = edit_cols;
+    elem.rows = edit_rows;
+  }
+  elem.dataset.id = id;
   elem.dataset.mode = mode;
+  elem.dataset.attr = target_attr;
   // テキスト
   if (mode === 'edit') {
-    elem.value = elem_parent.innerText;
+    if (target_attr === 'text') {
+      elem.value = g_data.get_item(id).text;
+    }
+    if (target_attr === 'url' && g_data.get_item(id).url !== undefined) {
+      elem.value = g_data.get_item(id).url;
+    }
+  } else {
+    elem.value = '';
   }
 
   // 位置
-  let rect_parent = elem_parent.getBoundingClientRect();
+  let rect_parent = document.getElementById(get_element_id(id)).getBoundingClientRect();
+  // let rect_parent = elem_parent.getBoundingClientRect();
   elem.style.top = rect_parent.top - 20 + window.scrollY;
   elem.style.left = rect_parent.right;
   elem.style.position = 'absolute';
@@ -604,25 +644,37 @@ function handler_edit_submit(event) {
   let text = elem.value;
   // モード
   let mode = elem.dataset.mode;
-  // 親ID
-  let parent_id = elem.dataset.parent_id;
+  // 編集対象属性
+  let target_attr = elem.dataset.attr;
+  // 対象ID
+  let id = elem.dataset.id;
   // 要素削除
   elem.remove();
+
   // 要素追加
   if (text !== '') {
     if (mode === 'add') {
-      g_data.add_new_item(parent_id, text);
+      g_data.add_new_item(id, text);
     }
     if (mode === 'edit') {
-      g_data.set_text(parent_id, text);
+      if (target_attr === 'text') {
+        g_data.set_text(id, text);
+      }
     }
     if (mode === 'insert') {
-      g_data.insert_item(parent_id, text);
+      g_data.insert_item(id, text);
     }
     draw_item_all();
   }
+  if (mode === 'edit') {
+    if (target_attr === 'url') {
+      g_data.set_url(id, text);
+      draw_item_all();
+    }
+  }
+
   // フォーカス
-  document.getElementById(get_element_id(parent_id)).focus();
+  document.getElementById(get_element_id(id)).focus();
 }
 
 /**
@@ -633,8 +685,8 @@ function handler_edit_cancel(event) {
   event.target.remove();
 
   // フォーカスを戻す
-  let parent_id = event.target.dataset.parent_id;
-  document.getElementById(get_element_id(parent_id)).focus();
+  let id = event.target.dataset.id;
+  document.getElementById(get_element_id(id)).focus();
 }
 
 /**

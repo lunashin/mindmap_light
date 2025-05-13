@@ -196,6 +196,16 @@ class DataManager {
   }
 
   /**
+   * @summary URL設定
+   * @param ID
+   * @param URL
+   */
+  set_url(id, url) {
+    this.record_history();
+    this.get_item(id).url = url;
+  }
+
+  /**
    * @summary 親要素設定
    * @param ID
    * @param 親ID

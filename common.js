@@ -12,6 +12,7 @@ const key_d = 68;
 const key_e = 69;
 const key_f = 70;
 const key_i = 73;
+const key_l = 76;
 const key_n = 78;
 const key_s = 83;
 const key_v = 86;
