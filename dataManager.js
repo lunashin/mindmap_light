@@ -660,7 +660,7 @@ class DataManager {
       for (let k = 0; k < array[i].length; k++) {
         // 横方向
         if (array[i][k] === '') {
-          let td = `<td></th>`;
+          let td = `<td></td>`;
           array_td.push(td);
           continue;
         }
@@ -669,7 +669,7 @@ class DataManager {
         if (item.color !== '') {
           style = `style="color: ${item.color};"`;
         }
-        let td = `<td ${style} >${item.text}</th>`;
+        let td = `<td ${style} >${item.text}</td>`;
         array_td.push(td);
       }
       html += array_td.join('');
