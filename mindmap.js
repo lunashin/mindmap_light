@@ -19,6 +19,8 @@ const edit_cols = '20';     // editのサイズ(横)
 const edit_rows = '2';      // editのサイズ(縦)
 const g_canvas_width = 5000;  // キャンバスサイズ(横)
 const g_canvas_height = 5000; // キャンバスサイズ(縦)
+const g_icon_relative_top = -18;  // 要素からのアイコンの相対位置(Top)
+const g_icon_relative_left = -9;  // 要素からのアイコンの相対位置(Left)
 
 
 // localStrage Key
@@ -435,9 +437,6 @@ function transitionStart_handler(event) {
 function transitionEnd_handler(event) {
   let item = g_data.get_item(parseInt(this.dataset.id));
   item.line = create_line(document.getElementById(get_element_id(item.parent)), this, g_data.get_direction(this.dataset.id, true));
-
-  // アイコン移動
-  relocate_icon_box(item.id);
 }
 
 
@@ -540,7 +539,7 @@ function draw_item(id, parent_id, base_top, base_left, info) {
       is_change_direction = true;
     }
 
-    // 描画
+    // 描画(再帰)
     top_last = draw_item(item.children[i], id, top_sub, base_left + left_margin * left_margin_coef, {direction:direction_child, level: info.level+1});
 
     // 縦の間隔調整
@@ -585,6 +584,10 @@ function put_item(id, parent_id, base_top, base_left, direction) {
     elem.style.left = adjusted_pos.left;
     // elem.style.top = base_top;
     // elem.style.left = base_left;
+
+    // 最小幅設定(レスポンシブで幅が狭くなることへの対処)
+    let len = item.text.split('\n')[0].length;
+    elem.style.minWidth = `${len}em`;
 
     // class設定
     if (item.size !== '') {
@@ -690,6 +693,8 @@ function create_box(id, top, left, direction) {
   elem.tabIndex = 1;
   elem.style.top = top;
   elem.style.left = left;
+  let len = item.text.split('\n')[0].length;
+  elem.style.minWidth = `${len}em`;
   elem.style.backgroundColor = item.color;
   elem.classList.add('item');
   if (item.size !== undefined && item.size !== '') {
@@ -749,11 +754,15 @@ function create_icon_box(id) {
   elem.innerHTML = disp_icon;
   elem.classList.add('item_icon');
   
-  let rect_parent = document.getElementById(get_element_id(id)).getBoundingClientRect();
-  elem.style.top = rect_parent.top - 18;
-  elem.style.left = rect_parent.left - 9;
+  let elem_parent = document.getElementById(get_element_id(id));
+  // let rect_parent = elem_parent.getBoundingClientRect();
+  // elem.style.top = rect_parent.top + g_icon_relative_top;
+  // elem.style.left = rect_parent.left + g_icon_relative_left;
+  elem.style.top = g_icon_relative_top;
+  elem.style.left = g_icon_relative_left;
 
-  document.getElementById('canvas').appendChild(elem);
+  // document.getElementById('canvas').appendChild(elem);
+  elem_parent.appendChild(elem);
 }
 
 /**
@@ -767,9 +776,11 @@ function relocate_icon_box(id) {
   }
   elem_icon.innerHTML = g_data.get_display_icon(id);
 
-  let rect_parent= document.getElementById(get_element_id(id)).getBoundingClientRect();
-  elem_icon.style.top = rect_parent.top - 18;
-  elem_icon.style.left = rect_parent.left - 9;
+  // let rect_parent= document.getElementById(get_element_id(id)).getBoundingClientRect();
+  // elem_icon.style.top = rect_parent.top + g_icon_relative_top;
+  // elem_icon.style.left = rect_parent.left + g_icon_relative_left;
+  elem.style.top = g_icon_relative_top;
+  elem.style.left = g_icon_relative_left;
 }
 /**
  * @summary 線を描く
@@ -847,7 +858,7 @@ function show_edit_box(id, type, mode, target_attr) {
   let rect_parent = document.getElementById(get_element_id(id)).getBoundingClientRect();
   // let rect_parent = elem_parent.getBoundingClientRect();
   elem.style.top = rect_parent.top - 20 + window.scrollY;
-  elem.style.left = rect_parent.right;
+  elem.style.left = rect_parent.right + window.scrollX;
   elem.style.position = 'absolute';
 
   // イベントハンドラ(フォーカスロスト)
