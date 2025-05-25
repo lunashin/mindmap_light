@@ -166,6 +166,66 @@ class DataManager {
   }
 
   /**
+   * @summary アイコン種類設定
+   * @param アイコン種類('star', 'question', 'exclamation', 'circle_red', 'circle_blue', 'circle_green')
+   */
+  set_icon_type(id, icon_type) {
+    let item = this.get_item(id);
+    if (icon_type === null) {
+      item.icon_type = '';
+    } else {
+      item.icon_type = icon_type;
+    }
+  }
+
+  /**
+   * @summary アイコン種類設定
+   * @returns アイコン種類
+   */
+  get_icon_type(id) {
+    return this.get_item(id).icon_type;
+  }
+
+  /**
+   * @summary アイコン取得
+   * @returns アイコン
+   */
+  get_display_icon(id) {
+    let ret = '';
+    let icon_type = this.get_item(id).icon_type;
+    switch(icon_type) {
+      case 'star':
+        ret = '⭐️';
+        break;
+      case 'question':
+        ret = '❓';
+        break;
+      case 'exclamation':
+        ret = '⚠️';
+        break;
+      case 'circle_red':
+        ret = '🔴';
+        break;
+      case 'circle_blue':
+        ret = '🔵';
+        break;
+      case 'circle_green':
+        ret = '🟢';
+        break;
+      case 'check':
+        ret = '✅';
+        break;
+      case 'cross':
+        ret = '❌';
+        break;
+      case 'calender':
+        ret = '📅';
+        break;
+    }
+    return ret;
+  }
+
+  /**
    * @summary 方向設定
    * @param 方向('right' or 'left')
    */
@@ -179,7 +239,7 @@ class DataManager {
   }
 
   /**
-   * @summary 方向設定
+   * @summary 方向取得
    * @param 方向('right' or 'left')
    * @param true:rootまで遡って検査する / false:指定IDのみ
    */

@@ -11,6 +11,8 @@
 const g_top_base = 100;     // root位置(Y)
 const g_left_base = 1000;   // root位置(X)
 const g_top_margin = 50;    // 縦の間隔
+const g_top_margin_L1 = 75; // 縦の間隔(Level 1)
+const g_top_margin_L2 = 65; // 縦の間隔(Level 2)
 const g_left_margin = 150;  // 横の間隔
 const g_left_margin_ex = 50;  // 横の間隔(要素間が詰まる場合)
 const edit_cols = '20';     // editのサイズ(横)
@@ -161,8 +163,8 @@ function keyhandler_window(event) {
 
 // 要素のキーハンドラ
 function keyhandler_item(event) {
-  let id = event.target.dataset.id;
-  let parent = event.target.dataset.parent_id;
+  let id = parseInt(event.target.dataset.id);
+  // let parent = parseInt(event.target.dataset.parent_id);
 
   console.log(event.keyCode, event.shiftKey, event.ctrlKey, event.altKey);
 
@@ -199,6 +201,7 @@ function keyhandler_item(event) {
       break;
     case key_arrow_left:  // ←
       if(event.shiftKey) {
+        event.preventDefault();
         // 左へ配置(root直下の場合)
         if (g_data.get_item(id).parent == 0) {
           g_data.set_direction(id, 'left');
@@ -206,24 +209,31 @@ function keyhandler_item(event) {
         }
         break;
       }
-      // 親要素へフォーカス移動
-      set_focus(g_data.get_item(id).parent);
+      // フォーカス移動
+      event.preventDefault();
+      if (id !== 0 && g_data.get_direction(id, true) === 'left') {
+        move_focus_child(id);
+      } else {
+        move_focus_parent(id);
+      }
       break;
     case key_arrow_right:  // →
       if(event.shiftKey) {
         // 右へ配置(root直下の場合)
+        event.preventDefault();
         if (g_data.get_item(id).parent == 0) {
           g_data.set_direction(id, 'right');
           draw_item_all();
         }
         break;
       }
-      // 子要素へフォーカス移動
-      let item = g_data.get_item(parseInt(id));
-      if (item.children.length <= 0) {
-        break;
+      // フォーカス移動
+      event.preventDefault();
+      if (id !== 0 && g_data.get_direction(id, true) === 'left') {
+        move_focus_parent(id);
+      } else {
+        move_focus_child(id);
       }
-      set_focus(item.children[0]);
       break;
     case key_a:    // a
       event.preventDefault();
@@ -291,29 +301,73 @@ function keyhandler_item(event) {
       mark_cut(id);
       break;
     case key_0:       // 0
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, '');  // アイコンなし
+        draw_item_all();
+        break;
+      }
+      event.preventDefault();
       g_data.set_color(id, null);
       draw_item_all();
       break;
     case key_1:       // 1
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'star'); // アイコン(星)
+        draw_item_all();
+        break;
+      }
       g_data.set_color(id, g_color_yellow);
       draw_item_all();
       break;
     case key_2:       // 2
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'question'); // アイコン(?)
+        draw_item_all();
+        break;
+      }
       g_data.set_color(id, g_color_blue);
       draw_item_all();
       break;
     case key_3:       // 3
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'exclamation'); // アイコン(!)
+        draw_item_all();
+        break;
+      }
       g_data.set_color(id, g_color_green);
       draw_item_all();
       break;
     case key_4:       // 4
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'circle_green'); // アイコン(緑丸)
+        draw_item_all();
+        break;
+      }
       g_data.set_color(id, g_color_red);
       draw_item_all();
       break;
     case key_5:       // 5
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'check'); // アイコン(チェック)
+        draw_item_all();
+        break;
+      }
       g_data.set_color(id, g_color_grey);
       draw_item_all();
       break;
+    case key_6:       // 6
+      if (event.shiftKey) {
+        event.preventDefault();
+        g_data.set_icon_type(id, 'cross'); // アイコン(バツ)
+        draw_item_all();
+        break;
+      }
     case key_plus:       // +
       if (event.shiftKey) {
         event.preventDefault();
@@ -331,6 +385,29 @@ function keyhandler_item(event) {
       }
       break;
   }
+}
+
+/**
+ * @summary 親要素へフォーカス移動
+ * @param ID
+ */
+function move_focus_parent(id) {
+  if (id === 0) {
+    return;
+  }
+  set_focus(g_data.get_item(id).parent);
+}
+
+/**
+ * @summary 子要素へフォーカス移動
+ * @param ID
+ */
+function move_focus_child(id) {
+  let item = g_data.get_item(id);
+  if (item.children.length <= 0) {
+    return;
+  }
+  set_focus(item.children[0]);
 }
 
 /**
@@ -356,8 +433,11 @@ function transitionStart_handler(event) {
  * @summary 要素トランジション終了時処理
  */
 function transitionEnd_handler(event) {
-  let item = g_data.get_item(this.dataset.id);
+  let item = g_data.get_item(parseInt(this.dataset.id));
   item.line = create_line(document.getElementById(get_element_id(item.parent)), this, g_data.get_direction(this.dataset.id, true));
+
+  // アイコン移動
+  relocate_icon_box(item.id);
 }
 
 
@@ -404,12 +484,16 @@ function draw_item_all(is_clear_canvas) {
  * @param root ID
  * @param 基底TOP
  * @param 基底LEFT
- * @param 展開方向('right'(既定) or 'left')
+ * @param 情報(dict) {direction:"", level:n}
  * @returns 最後に描画した要素のTOP
  */
-function draw_item(id, parent_id, base_top, base_left, direction) {
+function draw_item(id, parent_id, base_top, base_left, info) {
+  if (info === undefined) {
+    info = {direction: 'right', level: 0};
+  }
+  console.log(info);
   // 要素を描画(あれば再配置)
-  put_item(id, parent_id, base_top, base_left, direction);
+  put_item(id, parent_id, base_top, base_left, info.direction);
   
   let item = g_data.get_item(id);
 
@@ -436,7 +520,7 @@ function draw_item(id, parent_id, base_top, base_left, direction) {
     // 展開方向
     let direction_child = g_data.get_item(item.children[i]).direction;
     if (direction_child === undefined) {
-      direction_child = direction;
+      direction_child = info.direction;
     }
     let left_margin_coef = 1;
     if (direction_child === 'left') {
@@ -451,12 +535,24 @@ function draw_item(id, parent_id, base_top, base_left, direction) {
     }
 
     // root直下で方向が変わった場合はtopをリセット
-    if (item.id === 0 && !is_change_direction && direction_child !== direction) {
+    if (item.id === 0 && !is_change_direction && direction_child !== info.direction) {
       top_sub = base_top;
       is_change_direction = true;
     }
-    top_last = draw_item(item.children[i], id, top_sub, base_left + left_margin * left_margin_coef, direction_child);
-    top_sub = top_last + g_top_margin;
+
+    // 描画
+    top_last = draw_item(item.children[i], id, top_sub, base_left + left_margin * left_margin_coef, {direction:direction_child, level: info.level+1});
+
+    // 縦の間隔調整
+    if(info.level === 0) {
+      // root直下
+      top_sub = top_last + g_top_margin_L1;
+    } else if(info.level === 1) {
+      // rootの2つ下
+      top_sub = top_last + g_top_margin_L2;
+    } else {
+      top_sub = top_last + g_top_margin;
+    }
   }
 
   return top_last;
@@ -489,6 +585,8 @@ function put_item(id, parent_id, base_top, base_left, direction) {
     elem.style.left = adjusted_pos.left;
     // elem.style.top = base_top;
     // elem.style.left = base_left;
+
+    // class設定
     if (item.size !== '') {
       elem.classList.remove('middle');
       elem.classList.remove('big');
@@ -502,6 +600,9 @@ function put_item(id, parent_id, base_top, base_left, direction) {
     } else {
       elem.classList.remove('bold');
     }
+
+    // アイコン配置
+    put_icon_box(id);
   } else {
     // 要素作成
     elem = create_box(id, base_top, base_left, direction);
@@ -583,6 +684,7 @@ function create_box(id, top, left, direction) {
     elem.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
   } else {
     elem.innerHTML = text;
+    // elem.value = text;
   }
   elem.dataset.id = item.id;
   elem.tabIndex = 1;
@@ -611,9 +713,64 @@ function create_box(id, top, left, direction) {
   elem.addEventListener("transitionstart", transitionStart_handler);
   elem.addEventListener("transitionend", transitionEnd_handler);
 
+  // アイコン付与
+  if (g_data.get_icon_type(id)!== undefined && g_data.get_icon_type(id) !== '') {
+    create_icon_box(id);
+  }
+
   return elem;
 }
 
+/**
+ * @summary アイコンを配置
+ * @param ID
+ */
+function put_icon_box(id) {
+  let elem_icon = document.getElementById(get_icon_element_id(id));
+  if (elem_icon === null) {
+    create_icon_box(id);
+  } else {
+    relocate_icon_box(id);
+  }
+}
+
+/**
+ * @summary アイコンを配置
+ * @param ID
+ */
+function create_icon_box(id) {
+  let icon_type = g_data.get_item(id).icon_type;
+  if(icon_type === undefined || icon_type === '') {
+    return;
+  }
+  let disp_icon = g_data.get_display_icon(id);
+  let elem = document.createElement('div');
+  elem.id = get_icon_element_id(id)
+  elem.innerHTML = disp_icon;
+  elem.classList.add('item_icon');
+  
+  let rect_parent = document.getElementById(get_element_id(id)).getBoundingClientRect();
+  elem.style.top = rect_parent.top - 18;
+  elem.style.left = rect_parent.left - 9;
+
+  document.getElementById('canvas').appendChild(elem);
+}
+
+/**
+ * @summary アイコン位置を調整
+ * @param ID
+ */
+function relocate_icon_box(id) {
+  let elem_icon = document.getElementById(get_icon_element_id(id));
+  if (elem_icon === null) {
+    return;
+  }
+  elem_icon.innerHTML = g_data.get_display_icon(id);
+
+  let rect_parent= document.getElementById(get_element_id(id)).getBoundingClientRect();
+  elem_icon.style.top = rect_parent.top - 18;
+  elem_icon.style.left = rect_parent.left - 9;
+}
 /**
  * @summary 線を描く
  * @param 要素1
@@ -786,6 +943,14 @@ function set_focus(id) {
  */
 function get_element_id(id) {
   return "item_" + id;
+}
+
+/**
+ * @summary IDからアイコン要素IDを取得
+ * @param ID
+ */
+function get_icon_element_id(id) {
+  return "item_icon_" + id;
 }
 
 /**
